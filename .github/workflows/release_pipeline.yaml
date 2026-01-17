@@ -1,0 +1,197 @@
+name: 🚀 Production Build & Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  versioning:
+    name: Determine Version
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      version: ${{ steps.set_version.outputs.version }}
+      is_prerelease: ${{ steps.set_version.outputs.is_prerelease }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Calculate Version
+        id: set_version
+        run: |
+          if [[ "${{ github.ref_name }}" == "develop" ]]; then
+            VERSION="0.0.${{ github.run_number }}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "🔹 Detected Develop Branch. Version: $VERSION"
+          else
+            VERSION="${{ github.ref_name }}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "🟢 Detected Release Branch. Version: $VERSION"
+          fi
+
+  build-windows:
+    name: Build Windows
+    needs: versioning
+    runs-on: windows-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          
+      - name: Install FastForge
+        run: dart pub global activate fastforge
+
+      - name: Update Version in Pubspec
+        run: |
+          $version = "${{ needs.versioning.outputs.version }}"
+          (Get-Content pubspec.yaml) -replace 'version: 1.0.0\+1', "version: $version" | Set-Content pubspec.yaml
+          
+      - name: Build Windows x64
+        env:
+          NEW_RELIC_KEY: ${{ secrets.NEW_RELIC_KEY }}
+        run: |
+          fastforge release --name dev --jobs windows-msi,windows-zip
+
+      - name: Build Windows ARM64 (Portable)
+        run: |
+          flutter build windows --target-platform=windows-arm64 --dart-define=NEW_RELIC_KEY=${{ secrets.NEW_RELIC_KEY }}
+          Compress-Archive -Path build\windows\arm64\runner\Release\* -DestinationPath dist\fontkeep-${{ needs.versioning.outputs.version }}-windows-arm64.zip
+
+      - name: Generate Checksums
+        shell: pwsh
+        run: |
+          cd dist
+          Get-ChildItem * -Include *.zip,*.msi | ForEach-Object {
+             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+             "$hash  $($_.Name)" | Out-File -Append checksums.txt
+          }
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: dist/*
+          retention-days: 1
+
+  build-linux:
+    name: Build Linux
+    needs: versioning
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install FastForge
+        run: dart pub global activate fastforge
+
+      - name: Update Version
+        run: |
+          sed -i 's/version: 1.0.0+1/version: ${{ needs.versioning.outputs.version }}/g' pubspec.yaml
+
+      - name: Build Linux x64
+        env:
+          NEW_RELIC_KEY: ${{ secrets.NEW_RELIC_KEY }}
+        run: |
+          fastforge release --name dev --jobs linux-appimage
+
+      - name: Generate Checksums
+        run: |
+          cd dist
+          sha256sum * > checksums.txt
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: dist/*
+
+  build-macos:
+    name: Build macOS
+    needs: versioning
+    runs-on: macos-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Update Version
+        run: |
+          sed -i '' 's/version: 1.0.0+1/version: ${{ needs.versioning.outputs.version }}/g' pubspec.yaml
+          
+      - name: Build macOS Universal
+        run: |
+          flutter build macos --release --dart-define=NEW_RELIC_KEY=${{ secrets.NEW_RELIC_KEY }}
+          # Create Zip manually (Safest for unsigned builds)
+          cd build/macos/Build/Products/Release
+          zip -r ../../../../fontkeep-${{ needs.versioning.outputs.version }}-macos.zip FontKeep.app
+
+      - name: Generate Checksums
+        run: |
+          sha256sum fontkeep-*.zip > checksums.txt
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: |
+            fontkeep-*.zip
+            checksums.txt
+
+  release:
+    name: Publish Release
+    needs: [versioning, build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-artifacts
+          path: release_assets
+
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-artifacts
+          path: release_assets
+
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-artifacts
+          path: release_assets
+
+      - name: Merge Checksums
+        run: |
+          cd release_assets
+          cat checksums.txt > SHA256SUMS.txt
+          # Clean up partial checksum files if needed
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.versioning.outputs.version }}
+          name: Release v${{ needs.versioning.outputs.version }}
+          draft: false
+          prerelease: ${{ needs.versioning.outputs.is_prerelease }}
+          files: release_assets/*
+          generate_release_notes: true

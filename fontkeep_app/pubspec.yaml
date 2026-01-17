@@ -1,0 +1,82 @@
+name: fontkeep_app
+description: "A FOSS, cross-platform font manager that syncs your library privately using your own Google Drive or Local Network. Built with Flutter."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^3.1.0
+  riverpod_annotation: ^4.0.0
+  go_router: ^17.0.1
+  url_launcher: ^6.3.2
+  drift: ^2.30.1
+  sqlite3_flutter_libs: ^0.5.41
+  path_provider: ^2.1.5
+  path: ^1.9.1
+  googleapis: ^15.0.0
+  googleapis_auth: ^2.0.0
+  http: ^1.6.0
+  shelf: ^1.4.2
+  shelf_router: ^1.1.4
+  bonsoir: ^6.0.1
+  archive: ^4.0.7
+  crypto: ^3.0.7
+  file_picker: ^10.3.8
+  flutter_secure_storage: ^10.0.0
+  uuid: ^4.5.2
+  device_info_plus: ^12.3.0
+  share_plus: ^12.0.1
+  open_file: ^3.5.11
+  shared_preferences: ^2.5.4
+  package_info_plus: ^9.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.10.5
+  drift_dev: ^2.30.1
+  riverpod_generator: ^4.0.0+1
+  custom_lint: ^0.8.1
+  riverpod_lint: ^3.1.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon/app_icon_512x512.png
+    - assets/icon/app_icon_256x256.png
+    - assets/icon/app_icon_macos.png
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic
+  #   - family: Trajan Pro
+  #     fonts:
+  #       - asset: fonts/TrajanPro.ttf
+  #       - asset: fonts/TrajanPro_Bold.ttf
+  #         weight: 700
+
+flutter_launcher_icons:
+  android: false
+  ios: false
+  image_path: "assets/icon/app_icon_512x512.png"
+  windows:
+    generate: true
+    icon_size: 256
+    image_path: "assets/icon/app_icon_256x256.png"
+  macos:
+    generate: true
+    image_path: "assets/icon/app_icon_macos.png"
+  linux:
+    generate: true
+    image_path: "assets/icon/app_icon_256x256.png"
