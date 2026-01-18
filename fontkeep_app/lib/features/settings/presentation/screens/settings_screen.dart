@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fontkeep_app/core/providers/app_info_provider.dart';
 import 'package:fontkeep_app/core/services/logger_service.dart';
-import 'package:fontkeep_app/features/settings/data/repositories/update_repository.dart';
+import 'package:fontkeep_app/core/services/update_service.dart';
 import 'package:fontkeep_app/features/settings/domain/providers/settings_providers.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -45,60 +45,7 @@ class SettingsScreen extends ConsumerWidget {
                 const SnackBar(content: Text("Checking for updates...")),
               );
 
-              final repo = UpdateRepository();
-              final update = await repo.checkForUpdate(logger);
-
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-              if (update != null) {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: Text("Update Available: v${update.latestVersion}"),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "You are on v${update.currentVersion}. Update to get the latest features.",
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          "Release Notes:",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Container(
-                          constraints: const BoxConstraints(maxHeight: 200),
-                          child: SingleChildScrollView(
-                            child: Text(update.releaseNotes),
-                          ),
-                        ),
-                      ],
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text("Later"),
-                      ),
-                      FilledButton(
-                        onPressed: () {
-                          launchUrl(
-                            Uri.parse(update.downloadUrl),
-                            mode: LaunchMode.externalApplication,
-                          );
-                          Navigator.pop(ctx);
-                        },
-                        child: const Text("Download"),
-                      ),
-                    ],
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("You are up to date! ✅")),
-                );
-              }
+              await UpdateService().check(context, silent: false);
             },
           ),
 
@@ -190,6 +137,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
             leading: const Icon(Icons.archive),
             onTap: () async {
+              context.loaderOverlay.show();
               try {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -198,10 +146,12 @@ class SettingsScreen extends ConsumerWidget {
                 );
                 await controller.exportFontsAsZip();
               } catch (e) {
+                context.loaderOverlay.hide();
                 ScaffoldMessenger.of(
                   context,
                 ).showSnackBar(SnackBar(content: Text("Export failed: $e")));
               }
+              context.loaderOverlay.hide();
             },
           ),
 
@@ -277,13 +227,32 @@ class SettingsScreen extends ConsumerWidget {
           Center(
             child: TextButton(
               onPressed: () {
-                showAboutDialog(
-                  context: context,
-                  applicationName: "FontKeep",
-                  applicationVersion: "1.0.0",
-                  applicationIcon: Image.asset(
-                    "assets/icon/app_icon_256x256.png",
-                  ),
+                final versionAsync = ref.watch(appVersionProvider);
+
+                versionAsync.when(
+                  data: (data) {
+                    context.loaderOverlay.hide();
+                    showAboutDialog(
+                      context: context,
+                      applicationName: "FontKeep",
+                      applicationVersion: data,
+                      applicationIcon: Image.asset(
+                        "assets/icon/app_icon_256x256.png",
+                      ),
+                    );
+                  },
+                  error: (error, stackTrace) {
+                    showAboutDialog(
+                      context: context,
+                      applicationName: "FontKeep",
+                      applicationIcon: Image.asset(
+                        "assets/icon/app_icon_256x256.png",
+                      ),
+                    );
+                  },
+                  loading: () {
+                    context.loaderOverlay.show();
+                  },
                 );
               },
               child: Text("About FontKeep"),

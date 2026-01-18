@@ -1,0 +1,3 @@
+# fontkeep_app/macos/packaging/pkg/make_config.yaml
+install-path: /Applications
+identifier: com.fontkeep.app

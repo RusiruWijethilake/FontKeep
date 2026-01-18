@@ -1,0 +1,8 @@
+# fontkeep_app/windows/packaging/exe/make_config.yaml
+app_id: 88762512-4598-4422-8356-913745229871
+publisher_name: FontKeep Team
+publisher_url: https://github.com/RusiruWijethilake/FontKeep
+display_name: FontKeep
+create_desktop_icon: true
+locales:
+  - en

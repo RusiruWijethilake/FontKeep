@@ -1,0 +1,12 @@
+# fontkeep_app/linux/packaging/appimage/make_config.yaml
+display_name: FontKeep
+generic_name: Font Manager
+description: Manage and sync your local font library.
+icon: assets/icon/app_icon_512x512.png
+keywords:
+  - Font
+  - Manager
+categories:
+  - Utility
+  - Graphics
+startup_notify: true

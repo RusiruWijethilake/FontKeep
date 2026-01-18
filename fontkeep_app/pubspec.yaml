@@ -1,7 +1,7 @@
 name: fontkeep_app
 description: "A FOSS, cross-platform font manager that syncs your library privately using your own Google Drive or Local Network. Built with Flutter."
 publish_to: 'none'
-version: 1.0.0+1
+version: 0.0.1+1
 
 environment:
   sdk: ^3.10.7
@@ -36,6 +36,10 @@ dependencies:
   open_file: ^3.5.11
   shared_preferences: ^2.5.4
   package_info_plus: ^9.0.0
+  loader_overlay: ^5.0.0
+  version: ^3.0.2
+  dio: ^5.9.0
+  open_filex: ^4.7.0
 
 dev_dependencies:
   flutter_test:

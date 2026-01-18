@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fontkeep_app/core/services/logger_service.dart';
+import 'package:fontkeep_app/core/services/update_service.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
-
-import '../../features/settings/data/repositories/update_repository.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   final Widget child;
@@ -19,81 +17,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkForUpdates();
-    });
-  }
-
-  Future<void> _checkForUpdates() async {
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
-    final logger = ref.read(loggerProvider);
-
-    try {
-      final repo = ref.read(updateRepositoryProvider);
-      final update = await repo.checkForUpdate(logger);
-
-      if (update != null && mounted) {
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: Row(
-              children: [
-                const Icon(Icons.new_releases, color: Colors.indigo),
-                const SizedBox(width: 10),
-                const Text("Update Available"),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Version ${update.latestVersion} is available.",
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                const Text("Release Notes:"),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  constraints: const BoxConstraints(maxHeight: 150),
-                  child: SingleChildScrollView(
-                    child: Text(
-                      update.releaseNotes,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text("Skip"),
-              ),
-              FilledButton.icon(
-                icon: const Icon(Icons.download, size: 16),
-                label: const Text("Download"),
-                onPressed: () {
-                  launchUrl(
-                    Uri.parse(update.downloadUrl),
-                    mode: LaunchMode.externalApplication,
-                  );
-                  Navigator.pop(ctx);
-                },
-              ),
-            ],
-          ),
-        );
-      }
-    } catch (e) {
-      logger.error(e);
-    }
+    UpdateService().check(context, silent: true);
   }
 
   @override

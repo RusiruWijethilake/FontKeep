@@ -4,6 +4,7 @@ import 'package:fontkeep_app/core/services/logger_service.dart';
 import 'package:fontkeep_app/data/local/database.dart';
 import 'package:fontkeep_app/features/library/data/repositories/font_repository.dart';
 import 'package:fontkeep_app/features/library/presentation/widgets/font_inspector.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 
 import '../../domain/providers/library_providers.dart';
 
@@ -107,6 +108,7 @@ class LibraryScreen extends ConsumerWidget {
             tooltip: "Scan System Fonts",
             icon: const Icon(Icons.travel_explore),
             onPressed: () async {
+              context.loaderOverlay.show();
               await ref
                   .read(libraryControllerProvider.notifier)
                   .scanSystemFonts();
@@ -117,6 +119,7 @@ class LibraryScreen extends ConsumerWidget {
                   ),
                 );
               }
+              context.loaderOverlay.hide();
             },
           ),
           const SizedBox(width: 8),

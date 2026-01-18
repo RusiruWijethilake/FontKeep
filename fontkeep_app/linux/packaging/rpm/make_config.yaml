@@ -1,0 +1,15 @@
+# fontkeep_app/linux/packaging/rpm/make_config.yaml
+display_name: FontKeep
+summary: FontKeep is a cool application to manage fonts.
+group: Development/Libraries/Fonts
+vendor: FontKeep Team
+packager: FontKeep Team
+packagerEmail: rusirumc@gmail.com
+license: GPLv3
+url: https://github.com/RusiruWijethilake/FontKeep
+icon: assets/icon/app_icon_512x512.png
+generic_name: FontKeep Manager
+categories:
+  - Utility
+  - Graphics
+startup_notify: true

@@ -1,0 +1,19 @@
+# fontkeep_app/linux/packaging/deb/make_config.yaml
+display_name: FontKeep
+package_name: fontkeep-app
+maintainer:
+  name: FontKeep Team
+  email: rusirumc@gmail.com
+priority: optional
+section: x11
+installed_size: 6604
+essential: false
+icon: assets/icon/app_icon_512x512.png
+keywords:
+  - Font
+  - Manager
+generic_name: Font Manager
+categories:
+  - Utility
+  - Graphics
+startup_notify: true

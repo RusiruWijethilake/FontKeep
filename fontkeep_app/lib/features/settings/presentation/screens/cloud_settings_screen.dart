@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fontkeep_app/features/settings/domain/providers/auth_provider.dart';
 import 'package:fontkeep_app/features/sync/presentation/widgets/cloud_setup_help_dialog.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 
 class CloudSettingsScreen extends ConsumerStatefulWidget {
   const CloudSettingsScreen({super.key});
@@ -76,6 +77,7 @@ class _CloudSettingsScreenState extends ConsumerState<CloudSettingsScreen> {
             trailing: Switch(
               value: config.isEnabled,
               onChanged: (val) async {
+                context.loaderOverlay.show();
                 if (val) {
                   try {
                     await ref.read(syncConfigProvider.notifier).signIn();
@@ -89,6 +91,7 @@ class _CloudSettingsScreenState extends ConsumerState<CloudSettingsScreen> {
                 } else {
                   await ref.read(syncConfigProvider.notifier).signOut();
                 }
+                context.loaderOverlay.hide();
               },
             ),
           ),

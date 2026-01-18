@@ -3,17 +3,26 @@ name: 🚀 Production Build & Release
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
+  # -----------------------------------------------------------------------------
+  # JOB 1: DEFINE VERSION & GENERATE CHANGELOG
+  # -----------------------------------------------------------------------------
   versioning:
-    name: Determine Version
+    name: 🏷️ Version & Notes
     runs-on: ubuntu-latest
     environment: production
     outputs:
       version: ${{ steps.set_version.outputs.version }}
       is_prerelease: ${{ steps.set_version.outputs.is_prerelease }}
+      release_notes: ${{ steps.generate_notes.outputs.notes }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Calculate Version
         id: set_version
@@ -24,17 +33,118 @@ jobs:
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
             echo "🔹 Detected Develop Branch. Version: $VERSION"
           else
+            # DIRECT USE: Branch name "1.2.3" becomes version "1.2.3"
             VERSION="${{ github.ref_name }}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
             echo "🟢 Detected Release Branch. Version: $VERSION"
           fi
 
+      - name: Generate Release Notes
+        id: generate_notes
+        shell: bash
+        run: |
+          IS_PRE="${{ steps.set_version.outputs.is_prerelease }}"
+          VERSION="${{ steps.set_version.outputs.version }}"
+          
+          if [[ "$IS_PRE" == "true" ]]; then
+            NOTES="⚠️ **Pre-release Build**\n\nThis is a development build. Changes are not listed for pre-releases. Use with caution."
+            echo "notes<<EOF" >> $GITHUB_OUTPUT
+            echo -e "$NOTES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [[ -z "$LAST_TAG" ]]; then
+            echo "No previous tag found, getting all commits."
+            COMMITS=$(git log --pretty=format:"%s|%an|%H")
+          else
+            echo "Getting commits since $LAST_TAG..."
+            COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"%s|%an|%H")
+          fi
+
+          FEATURES=()
+          OPTIMIZATIONS=()
+          BUGFIXES=()
+          SECURITY=()
+          AUTHORS=()
+          
+          IFS=$'\n'
+          for LINE in $COMMITS; do
+             MSG=$(echo "$LINE" | cut -d'|' -f1)
+             AUTHOR=$(echo "$LINE" | cut -d'|' -f2)
+             
+             if [[ "$MSG" =~ ^feature: ]]; then
+                CLEAN_MSG=$(echo "$MSG" | sed 's/^feature: //I')
+                FEATURES+=("- $CLEAN_MSG")
+                AUTHORS+=("$AUTHOR")
+             elif [[ "$MSG" =~ ^optimization: ]]; then
+                CLEAN_MSG=$(echo "$MSG" | sed 's/^optimization: //I')
+                OPTIMIZATIONS+=("- $CLEAN_MSG")
+                AUTHORS+=("$AUTHOR")
+             elif [[ "$MSG" =~ ^bugfix: ]]; then
+                CLEAN_MSG=$(echo "$MSG" | sed 's/^bugfix: //I')
+                BUGFIXES+=("- $CLEAN_MSG")
+                AUTHORS+=("$AUTHOR")
+             elif [[ "$MSG" =~ ^security: ]]; then
+                CLEAN_MSG=$(echo "$MSG" | sed 's/^security: //I')
+                SECURITY+=("- $CLEAN_MSG")
+                AUTHORS+=("$AUTHOR")
+             fi
+          done
+
+          OUTPUT=""
+          if [[ "$VERSION" =~ \.[1-9]+$ ]]; then
+             OUTPUT+="🔥 **Hotfix Release $VERSION**\n\n_This is a hotfix release. An update is **highly recommended**._\n\n"
+          else
+             OUTPUT+="🚀 **Release $VERSION**\n\n"
+          fi
+
+          if [ ${#FEATURES[@]} -gt 0 ]; then
+             OUTPUT+="### ✨ Features\n"
+             for item in "${FEATURES[@]}"; do OUTPUT+="$item\n"; done
+             OUTPUT+="\n"
+          fi
+
+          if [ ${#OPTIMIZATIONS[@]} -gt 0 ]; then
+             OUTPUT+="### ⚡ Optimizations\n"
+             for item in "${OPTIMIZATIONS[@]}"; do OUTPUT+="$item\n"; done
+             OUTPUT+="\n"
+          fi
+
+          if [ ${#BUGFIXES[@]} -gt 0 ]; then
+             OUTPUT+="### 🐛 Bug Fixes\n"
+             for item in "${BUGFIXES[@]}"; do OUTPUT+="$item\n"; done
+             OUTPUT+="\n"
+          fi
+
+          if [ ${#SECURITY[@]} -gt 0 ]; then
+             OUTPUT+="### 🛡️ Security Updates & Vulnerability Fixes\n"
+             for item in "${SECURITY[@]}"; do OUTPUT+="$item\n"; done
+             OUTPUT+="\n"
+          fi
+
+          OUTPUT+="---\n**Contributors:** "
+          UNIQUE_AUTHORS=$(echo "${AUTHORS[*]}" | tr ' ' '\n' | sort -u | tr '\n' ', ' | sed 's/, $//')
+          OUTPUT+="$UNIQUE_AUTHORS"
+
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+  # -----------------------------------------------------------------------------
+  # JOB 2: WINDOWS
+  # -----------------------------------------------------------------------------
   build-windows:
-    name: Build Windows
+    name: 🪟 Build Windows
     needs: versioning
     runs-on: windows-latest
     environment: production
+    defaults:
+      run:
+        working-directory: fontkeep_app
     steps:
       - uses: actions/checkout@v4
       
@@ -42,54 +152,101 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          
+
+      - name: Install Inno Setup
+        run: choco install innosetup
+
       - name: Install FastForge
         run: dart pub global activate fastforge
 
-      - name: Update Version in Pubspec
+      - name: Update Version
         run: |
-          $version = "${{ needs.versioning.outputs.version }}"
-          (Get-Content pubspec.yaml) -replace 'version: 1.0.0\+1', "version: $version" | Set-Content pubspec.yaml
-          
-      - name: Build Windows x64
-        env:
-          NEW_RELIC_KEY: ${{ secrets.NEW_RELIC_KEY }}
-        run: |
-          fastforge release --name dev --jobs windows-msi,windows-zip
+          $ver = "${{ needs.versioning.outputs.version }}"
+          (Get-Content pubspec.yaml) | ForEach-Object { $_ -replace '^version: .*', "version: $ver" } | Set-Content pubspec.yaml
 
-      - name: Build Windows ARM64 (Portable)
-        run: |
-          flutter build windows --target-platform=windows-arm64 --dart-define=NEW_RELIC_KEY=${{ secrets.NEW_RELIC_KEY }}
-          Compress-Archive -Path build\windows\arm64\runner\Release\* -DestinationPath dist\fontkeep-${{ needs.versioning.outputs.version }}-windows-arm64.zip
-
-      - name: Generate Checksums
+      - name: Build & Zip Portable
         shell: pwsh
         run: |
-          cd dist
-          Get-ChildItem * -Include *.zip,*.msi | ForEach-Object {
-             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
-             "$hash  $($_.Name)" | Out-File -Append checksums.txt
+          flutter build windows --release --dart-define=NEW_RELIC_KEY=${{ secrets.NEW_RELIC_KEY }}
+          New-Item -ItemType Directory -Force -Path "staging"
+          $buildDir = "build\windows\x64\runner\Release"
+          $zipName = "staging\fontkeep-${{ needs.versioning.outputs.version }}-portable.zip"
+          Compress-Archive -Path "$buildDir\*" -DestinationPath $zipName
+
+      - name: Build Installers
+        env:
+          NEW_RELIC_KEY: ${{ secrets.NEW_RELIC_KEY }}
+        run: fastforge package --platform windows --targets exe,msix || Write-Warning "FastForge Installer build had issues."
+
+      - name: Organize Artifacts
+        shell: pwsh
+        run: |
+          $ver = "${{ needs.versioning.outputs.version }}"
+          if (Test-Path "dist") {
+             Get-ChildItem -Path "dist" -Recurse -Include *.exe | ForEach-Object {
+                $newName = "staging\fontkeep-$ver-windows-setup.exe"
+                Move-Item -Path $_.FullName -Destination $newName -Force
+             }
+             Get-ChildItem -Path "dist" -Recurse -Include *.msix | ForEach-Object {
+                $newName = "staging\fontkeep-$ver-windows.msix"
+                Move-Item -Path $_.FullName -Destination $newName -Force
+             }
+          }
+          cd staging
+          Get-ChildItem * | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower() + "  " + $_.Name | Out-File -Append checksums.txt }
+
+      - name: VirusTotal Scan
+        if: env.VT_API_KEY != ''
+        env:
+          VT_API_KEY: ${{ secrets.VT_API_KEY }}
+        shell: pwsh
+        run: |
+          $exePath = "staging\fontkeep-${{ needs.versioning.outputs.version }}-windows-setup.exe"
+          if (Test-Path $exePath) {
+             Write-Host "🔍 Uploading to VirusTotal..."
+             try {
+                 $url = "https://www.virustotal.com/api/v3/files"
+                 $headers = @{ "x-apikey" = $env:VT_API_KEY }
+                 $response = Invoke-RestMethod -Uri $url -Method Post -Headers $headers -InFile $exePath -ContentType "multipart/form-data"
+                 $analysisId = $response.data.id
+                 Write-Host "✅ Upload Complete. Analysis ID: $analysisId"
+                 Write-Host "👉 View Report: https://www.virustotal.com/gui/file-analysis/$analysisId"
+             } catch {
+                 Write-Warning "VirusTotal upload failed: $_"
+             }
+          } else {
+             Write-Host "⚠️ Skipping VirusTotal scan: EXE not found."
           }
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-artifacts
-          path: dist/*
+          path: fontkeep_app/staging/*
+          if-no-files-found: error
           retention-days: 1
 
+  # -----------------------------------------------------------------------------
+  # JOB 3: LINUX
+  # -----------------------------------------------------------------------------
   build-linux:
-    name: Build Linux
+    name: 🐧 Build Linux
     needs: versioning
     runs-on: ubuntu-latest
     environment: production
+    defaults:
+      run:
+        working-directory: fontkeep_app
     steps:
       - uses: actions/checkout@v4
       
       - name: Install Dependencies
+        run: sudo apt-get update -y && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev libjsoncpp-dev libfuse2 wget rpm
+
+      - name: Install AppImageTool
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+          sudo wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/local/bin/appimagetool
+          sudo chmod +x /usr/local/bin/appimagetool
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -101,30 +258,42 @@ jobs:
 
       - name: Update Version
         run: |
-          sed -i 's/version: 1.0.0+1/version: ${{ needs.versioning.outputs.version }}/g' pubspec.yaml
+          sed -i 's/^version: .*/version: ${{ needs.versioning.outputs.version }}/g' pubspec.yaml
 
-      - name: Build Linux x64
+      - name: Build Linux Packages
         env:
           NEW_RELIC_KEY: ${{ secrets.NEW_RELIC_KEY }}
-        run: |
-          fastforge release --name dev --jobs linux-appimage
+          APPIMAGE_EXTRACT_AND_RUN: 1 
+        run: fastforge package --platform linux --targets appimage,deb,rpm || echo "FastForge Linux build had issues."
 
-      - name: Generate Checksums
+      - name: Organize Artifacts
         run: |
-          cd dist
-          sha256sum * > checksums.txt
+          mkdir -p staging
+          VER="${{ needs.versioning.outputs.version }}"
+          find dist -name "*.AppImage" -exec cp {} staging/fontkeep-$VER-linux.AppImage \;
+          find dist -name "*.deb" -exec cp {} staging/fontkeep-$VER-linux.deb \;
+          find dist -name "*.rpm" -exec cp {} staging/fontkeep-$VER-linux.rpm \;
+          if [ -z "$(ls -A staging)" ]; then exit 1; fi
+          cd staging && sha256sum * > checksums.txt
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-artifacts
-          path: dist/*
+          path: fontkeep_app/staging/*
+          if-no-files-found: error
 
+  # -----------------------------------------------------------------------------
+  # JOB 4: MACOS
+  # -----------------------------------------------------------------------------
   build-macos:
-    name: Build macOS
+    name: 🍎 Build macOS
     needs: versioning
     runs-on: macos-latest
     environment: production
+    defaults:
+      run:
+        working-directory: fontkeep_app
     steps:
       - uses: actions/checkout@v4
       
@@ -133,58 +302,63 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Install AppDMG
+        run: npm install -g appdmg
+
+      - name: Install FastForge
+        run: dart pub global activate fastforge
+
       - name: Update Version
         run: |
-          sed -i '' 's/version: 1.0.0+1/version: ${{ needs.versioning.outputs.version }}/g' pubspec.yaml
-          
-      - name: Build macOS Universal
+          sed -i '' 's/^version: .*/version: ${{ needs.versioning.outputs.version }}/g' pubspec.yaml
+
+      - name: Build & Zip Portable
         run: |
           flutter build macos --release --dart-define=NEW_RELIC_KEY=${{ secrets.NEW_RELIC_KEY }}
-          # Create Zip manually (Safest for unsigned builds)
+          mkdir -p staging
           cd build/macos/Build/Products/Release
-          zip -r ../../../../fontkeep-${{ needs.versioning.outputs.version }}-macos.zip FontKeep.app
+          zip -r fontkeep_app.zip fontkeep_app.app
+          mv fontkeep_app.zip $GITHUB_WORKSPACE/fontkeep_app/staging/fontkeep-${{ needs.versioning.outputs.version }}-macos.zip
 
-      - name: Generate Checksums
+      - name: Build Packages
+        run: fastforge package --platform macos --targets dmg,pkg || echo "FastForge macOS build had issues."
+
+      - name: Organize Artifacts
         run: |
-          sha256sum fontkeep-*.zip > checksums.txt
+          VER="${{ needs.versioning.outputs.version }}"
+          find dist -name "*.dmg" -exec cp {} staging/fontkeep-$VER-macos.dmg \;
+          find dist -name "*.pkg" -exec cp {} staging/fontkeep-$VER-macos.pkg \;
+          cd staging && shasum -a 256 * > checksums.txt
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-artifacts
-          path: |
-            fontkeep-*.zip
-            checksums.txt
+          path: fontkeep_app/staging/*
+          if-no-files-found: error
 
+  # -----------------------------------------------------------------------------
+  # JOB 5: RELEASE
+  # -----------------------------------------------------------------------------
   release:
-    name: Publish Release
+    name: 📦 Publish Release
+    if: always() 
     needs: [versioning, build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Download Windows Artifacts
+      - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: windows-artifacts
           path: release_assets
-
-      - name: Download Linux Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-artifacts
-          path: release_assets
-
-      - name: Download macOS Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-artifacts
-          path: release_assets
+          merge-multiple: true
 
       - name: Merge Checksums
         run: |
           cd release_assets
-          cat checksums.txt > SHA256SUMS.txt
-          # Clean up partial checksum files if needed
+          cat checksums.txt >> SHA256SUMS.txt || true
+          sort -u SHA256SUMS.txt -o SHA256SUMS.txt
+          rm checksums.txt || true
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -193,5 +367,16 @@ jobs:
           name: Release v${{ needs.versioning.outputs.version }}
           draft: false
           prerelease: ${{ needs.versioning.outputs.is_prerelease }}
-          files: release_assets/*
-          generate_release_notes: true
+          body: ${{ needs.versioning.outputs.release_notes }}
+          files: |
+            release_assets/*.zip
+            release_assets/*.msi
+            release_assets/*.msix
+            release_assets/*.exe
+            release_assets/*.AppImage
+            release_assets/*.deb
+            release_assets/*.rpm
+            release_assets/*.dmg
+            release_assets/*.pkg
+            release_assets/SHA256SUMS.txt
+          generate_release_notes: false

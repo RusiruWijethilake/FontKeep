@@ -1,0 +1,7 @@
+# fontkeep_app/windows/packaging/msix/make_config.yaml
+display_name: FontKeep
+msix_version: 1.0.0.0
+publisher: CN=FontKeep Team
+publisher_display_name: FontKeep Team
+identity_name: FontKeep.FontKeepApp
+languages: en-US

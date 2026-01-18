@@ -1,16 +1,75 @@
-# fontkeep_app
+# FontKeep Developer Guide
 
-A FOSS, cross-platform font manager that syncs your library privately using your own Google Drive or Local Network. Built with Flutter.
+This documentation covers the setup, development workflow, and contribution guidelines for the FontKeep Flutter application.
 
-## Getting Started
+## 🛠️ Environment Setup
 
-This project is a starting point for a Flutter application.
+1.  **Prerequisites:**
+    * [Flutter SDK](https://docs.flutter.dev/get-started/install) (Stable channel)
+    * **Windows:** Visual Studio with C++ workload & [WiX Toolset](https://wixtoolset.org/) (for MSI building).
+    * **Linux:** `clang`, `cmake`, `ninja-build`, `pkg-config`, `libgtk-3-dev`, `liblzma-dev`, `libsecret-1-dev`, `libjsoncpp-dev`, `libfuse2`, `rpm`.
+    * **macOS:** Xcode & `npm install -g appdmg`.
 
-A few resources to get you started if this is your first Flutter project:
+2.  **Installation:**
+    ```bash
+    cd fontkeep_app
+    flutter pub get
+    dart pub global activate fastforge
+    ```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+3.  **Run Locally:**
+    ```bash
+    flutter run -d windows  # or linux/macos
+    ```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 📐 Contribution Workflow
+
+We follow a strict branching and commit strategy to automate our release pipelines.
+
+### 1. Branching Strategy
+* **Version Branches (`X.X.X`):** Created ONLY by Admins (e.g., `1.0.0`, `1.0.1`). Represents a specific release state.
+* **Feature/Dev Branches:** Created by contributors. Must follow these naming patterns:
+    * `feature/<name>` - New capabilities.
+    * `bugfix/<name>` - Fixes for existing issues.
+    * `optimization/<name>` - Performance improvements.
+    * `security/<name>` - Vulnerability fixes.
+    * `infra/<name>` - CI/CD or repo maintenance.
+
+### 2. Commit Guidelines
+Your commit messages determine the Release Notes. You **must** follow this format:
+
+`type: <description>`
+
+| Type | Description | Included in Release Notes? |
+| :--- | :--- | :---: |
+| **feature** | New features or major changes | ✅ Yes |
+| **optimization** | Performance or efficiency improvements | ✅ Yes |
+| **bugfix** | Fixes for bugs or crashes | ✅ Yes |
+| **security** | Security patches or vulnerability fixes | ✅ Yes |
+| **infra** | CI/CD, build scripts, or project config | ❌ No |
+
+**Example:**
+> `feature: Added dark mode support`
+> `bugfix: Fixed crash on startup`
+
+### 3. Making a Pull Request (PR)
+1.  Push your branch (`feature/my-cool-feature`).
+2.  Open a PR against `develop` (or the targeted version branch).
+3.  Fill out the **PR Template** completely.
+4.  Wait for review and CI checks to pass.
+5.  **Admins:** Squash and merge is recommended to keep history clean.
+
+## 📦 Building & Releases (Admins Only)
+
+Releases are automated via GitHub Actions.
+
+1.  **Pre-release:** Push to `develop`. This creates a pre-release tag (e.g., `v0.0.12`).
+2.  **Stable Release:**
+    * Create a branch named `v1.0.0` (or target version).
+    * Push to GitHub.
+    * The pipeline will build installers, sign them, generate changelogs, scan with VirusTotal, and publish a Draft Release.
+
+## 🧪 Testing
+Run unit and widget tests before pushing:
+```bash
+flutter test

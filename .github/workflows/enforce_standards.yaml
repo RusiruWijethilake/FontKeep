@@ -1,0 +1,50 @@
+name: 👮 Enforce Standards
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  enforce-branch-naming:
+    name: 🔍 Check Branch Name
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Branch Pattern
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          echo "Checking branch: $BRANCH_NAME"
+          
+          # Regex update: Allows standard branches OR version branches like 1.2.3
+          # ^[0-9]+\.[0-9]+\.[0-9]+$ matches 1.0.0, 0.0.19, etc.
+          if [[ ! "$BRANCH_NAME" =~ ^(feature|bugfix|optimization|security|infra|hotfix)\/.* ]] && [[ ! "$BRANCH_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Error: Invalid branch name '$BRANCH_NAME'."
+            echo "Allowed patterns: feature/*, bugfix/*, infra/*, or X.X.X (e.g. 1.0.0)"
+            exit 1
+          fi
+          echo "✅ Branch name is valid."
+
+  enforce-commit-convention:
+    name: 🔍 Check Commit Messages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify Commit Patterns
+        run: |
+          commits=$(git log --format="%s" origin/${{ github.base_ref }}..origin/${{ github.head_ref }})
+          fail=0
+          IFS=$'\n'
+          for msg in $commits; do
+            if [[ ! "$msg" =~ ^(feature|optimization|bugfix|security|infra):[[:space:]].+ ]]; then
+               echo "❌ Invalid Commit Message: '$msg'"
+               fail=1
+            fi
+          done
+          
+          if [ $fail -eq 1 ]; then
+            echo "❌ Commits must start with: feature:, optimization:, bugfix:, security:, or infra:"
+            exit 1
+          fi

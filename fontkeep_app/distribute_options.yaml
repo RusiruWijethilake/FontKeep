@@ -8,17 +8,15 @@ releases:
           platform: windows
           target: msi
           build_args:
-            dart-define:
-              - "NEW_RELIC_KEY={{env.NEW_RELIC_KEY}}"
-
+            dart-define: "NEW_RELIC_KEY={{env.NEW_RELIC_KEY}}"
+      
       # Windows Portable (Zip)
       - name: windows-zip
         package:
           platform: windows
           target: zip
           build_args:
-            dart-define:
-              - "NEW_RELIC_KEY={{env.NEW_RELIC_KEY}}"
+            dart-define: "NEW_RELIC_KEY={{env.NEW_RELIC_KEY}}"
 
       # Linux AppImage
       - name: linux-appimage
@@ -26,8 +24,7 @@ releases:
           platform: linux
           target: appimage
           build_args:
-            dart-define:
-              - "NEW_RELIC_KEY={{env.NEW_RELIC_KEY}}"
+            dart-define: "NEW_RELIC_KEY={{env.NEW_RELIC_KEY}}"
 
       # macOS Zip (DMG requires signing certs, Zip is safer for CI without certs)
       - name: macos-zip
@@ -35,5 +32,4 @@ releases:
           platform: macos
           target: zip
           build_args:
-            dart-define:
-              - "NEW_RELIC_KEY={{env.NEW_RELIC_KEY}}"
+            dart-define: "NEW_RELIC_KEY={{env.NEW_RELIC_KEY}}"

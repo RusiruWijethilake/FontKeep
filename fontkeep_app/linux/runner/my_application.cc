@@ -146,5 +146,3 @@ MyApplication* my_application_new() {
                                      "application-id", APPLICATION_ID, "flags",
                                      G_APPLICATION_NON_UNIQUE, nullptr));
 }
-
-gtk_window_set_icon_from_file(GTK_WINDOW(window),"assets/icon/app_icon_256x256.png",NULL);

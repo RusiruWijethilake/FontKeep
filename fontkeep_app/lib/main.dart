@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fontkeep_app/core/services/crash_reporting_service.dart';
 import 'package:fontkeep_app/features/settings/domain/providers/settings_providers.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 
 import 'presentation/router/app_router.dart';
 
@@ -37,27 +39,46 @@ class FontKeepApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final accentColor = ref.watch(accentColorProvider);
 
-    return MaterialApp.router(
-      title: 'FontKeep',
-      debugShowCheckedModeBanner: false,
-      themeMode: themeMode,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: accentColor,
-          brightness: Brightness.light,
+    return GlobalLoaderOverlay(
+      useBackButtonInterceptor: true,
+      closeOnBackButton: false,
+      disableBackButton: true,
+      overlayColor: Colors.transparent,
+      overlayWidgetBuilder: (progress) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+          child: Center(
+            child: Container(
+              width: 100,
+              height: 100,
+              color: Colors.transparent,
+              child: const CircularProgressIndicator(),
+            ),
+          ),
+        );
+      },
+      child: MaterialApp.router(
+        title: 'FontKeep',
+        debugShowCheckedModeBanner: false,
+        themeMode: themeMode,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: accentColor,
+            brightness: Brightness.light,
+          ),
+          useMaterial3: true,
+          fontFamily: 'Segoe UI',
         ),
-        useMaterial3: true,
-        fontFamily: 'Segoe UI',
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: accentColor,
-          brightness: Brightness.dark,
+        darkTheme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: accentColor,
+            brightness: Brightness.dark,
+          ),
+          useMaterial3: true,
+          fontFamily: 'Segoe UI',
         ),
-        useMaterial3: true,
-        fontFamily: 'Segoe UI',
+        routerConfig: router,
       ),
-      routerConfig: router,
     );
   }
 }
