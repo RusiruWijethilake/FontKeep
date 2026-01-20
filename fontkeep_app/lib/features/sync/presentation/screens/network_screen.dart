@@ -294,9 +294,11 @@ class _CloudSyncTabState extends ConsumerState<_CloudSyncTab> {
               try {
                 await ref.read(syncConfigProvider.notifier).signIn();
               } catch (e) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                }
               }
             },
           ),
