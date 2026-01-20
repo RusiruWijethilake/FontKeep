@@ -4,6 +4,7 @@ import 'package:fontkeep_app/core/services/font_install_service.dart';
 import 'package:fontkeep_app/core/services/logger_service.dart';
 import 'package:fontkeep_app/data/local/database.dart';
 import 'package:fontkeep_app/features/library/domain/providers/library_providers.dart';
+import 'package:fontkeep_app/features/library/presentation/widgets/smart_delete_dialog.dart';
 import 'package:fontkeep_app/features/sync/domain/models/nearby_device.dart';
 import 'package:fontkeep_app/features/sync/domain/providers/sync_providers.dart';
 import 'package:loader_overlay/loader_overlay.dart';
@@ -225,13 +226,20 @@ class _FontInspectorState extends ConsumerState<FontInspector> {
                   ),
                 const SizedBox(height: 10),
                 FilledButton.icon(
-                  onPressed: () =>
-                      _showDeleteDialog(context, ref, selectedFont),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.errorContainer,
-                  ),
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => SmartDeleteDialog(
+                        fonts: [selectedFont],
+                        onConfirm: () {
+                          ref
+                              .read(libraryControllerProvider.notifier)
+                              .deleteFont(selectedFont);
+                          ref.read(selectedFontProvider.notifier).state = null;
+                        },
+                      ),
+                    );
+                  },
                   icon: const Icon(Icons.delete, color: Colors.red),
                   label: const Text(
                     "Delete",
@@ -240,68 +248,6 @@ class _FontInspectorState extends ConsumerState<FontInspector> {
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteDialog(BuildContext context, WidgetRef ref, Font font) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Delete Font"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Are you sure you want to remove '${font.familyName}'?"),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: font.isSystem
-                    ? Colors.amber.withOpacity(0.2)
-                    : Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: font.isSystem ? Colors.amber : Colors.red,
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    font.isSystem ? Icons.info : Icons.warning,
-                    color: font.isSystem ? Colors.amber[800] : Colors.red,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      font.isSystem
-                          ? "This is a System Font. It will be removed from your FontKeep library, but the actual file in Windows/Fonts will NOT be deleted."
-                          : "This is a User Font. The file will be PERMANENTLY DELETED from your disk.",
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              ref.read(libraryControllerProvider.notifier).deleteFont(font);
-              ref.read(selectedFontProvider.notifier).state = null;
-              Navigator.pop(ctx);
-            },
-            child: const Text("Confirm Delete"),
           ),
         ],
       ),
@@ -325,15 +271,15 @@ class _FontInspectorState extends ConsumerState<FontInspector> {
   void _showDevicePicker(BuildContext context, WidgetRef ref, Font font) {
     showDialog(
       context: context,
-      builder: (ctx) => DevicePickerDialog(font: font),
+      builder: (ctx) => DevicePickerDialog(fonts: [font]),
     );
   }
 }
 
 class DevicePickerDialog extends ConsumerStatefulWidget {
-  final Font font;
+  final List<Font> fonts; // CHANGED: Now accepts a list
 
-  const DevicePickerDialog({super.key, required this.font});
+  const DevicePickerDialog({super.key, required this.fonts});
 
   @override
   ConsumerState<DevicePickerDialog> createState() => _DevicePickerDialogState();
@@ -369,7 +315,9 @@ class _DevicePickerDialogState extends ConsumerState<DevicePickerDialog> {
     final devicesAsync = ref.watch(nearbyDevicesProvider);
 
     return AlertDialog(
-      title: const Text("Select Device"),
+      title: Text(
+        "Send ${widget.fonts.length} Font${widget.fonts.length > 1 ? 's' : ''}",
+      ),
       content: SizedBox(
         width: double.maxFinite,
         height: 300,
@@ -411,7 +359,7 @@ class _DevicePickerDialogState extends ConsumerState<DevicePickerDialog> {
                   trailing: const Icon(Icons.send, color: Colors.indigo),
                   onTap: () {
                     Navigator.pop(context);
-                    _sendFile(context, ref, device, widget.font);
+                    _sendFiles(context, ref, device, widget.fonts);
                   },
                 );
               },
@@ -428,47 +376,78 @@ class _DevicePickerDialogState extends ConsumerState<DevicePickerDialog> {
     );
   }
 
-  Future<void> _sendFile(
+  Future<void> _sendFiles(
     BuildContext context,
     WidgetRef ref,
     NearbyDevice device,
-    Font font,
+    List<Font> fonts,
   ) async {
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+
+    messenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [
             const SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(width: 16),
-            Text("Sending '${font.familyName}' to ${device.name}..."),
+            Expanded(
+              child: Text(
+                fonts.length == 1
+                    ? "Sending '${fonts.first.familyName}' to ${device.name}..."
+                    : "Sending ${fonts.length} fonts to ${device.name}...",
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
-        duration: const Duration(minutes: 1),
+        duration: const Duration(minutes: 5),
       ),
     );
 
-    try {
-      await ref
-          .read(transferRepositoryProvider)
-          .sendFontToDevice(device.ip, font);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
+    int success = 0;
+    int fail = 0;
+    final repo = ref.read(transferRepositoryProvider);
+
+    for (final font in fonts) {
+      try {
+        await repo.sendFontToDevice(device.ip, font);
+        success++;
+      } catch (e) {
+        fail++;
+      }
+    }
+
+    if (context.mounted) {
+      messenger.hideCurrentSnackBar();
+
+      if (fail == 0) {
+        messenger.showSnackBar(
           SnackBar(
-            content: Text("✅ Sent to ${device.name}"),
+            content: Text(
+              "✅ Successfully sent ${fonts.length} font(s) to ${device.name}",
+            ),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
           ),
         );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("❌ Failed: $e"), backgroundColor: Colors.red),
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              success == 0
+                  ? "❌ Failed to send files to ${device.name}"
+                  : "⚠️ Sent $success files, failed to send $fail files.",
+            ),
+            backgroundColor: success == 0 ? Colors.red : Colors.orange,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
