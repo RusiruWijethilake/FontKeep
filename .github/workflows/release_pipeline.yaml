@@ -33,7 +33,6 @@ jobs:
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
             echo "🔹 Detected Develop Branch. Version: $VERSION"
           else
-            # DIRECT USE: Branch name "1.2.3" becomes version "1.2.3"
             VERSION="${{ github.ref_name }}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
@@ -45,8 +44,8 @@ jobs:
         shell: bash
         run: |
           IS_PRE="${{ steps.set_version.outputs.is_prerelease }}"
-          VERSION="${{ steps.set_version.outputs.version }}"
           
+          # Pre-release short-circuit
           if [[ "$IS_PRE" == "true" ]]; then
             NOTES="⚠️ **Pre-release Build**\n\nThis is a development build. Changes are not listed for pre-releases. Use with caution."
             echo "notes<<EOF" >> $GITHUB_OUTPUT
@@ -55,47 +54,66 @@ jobs:
             exit 0
           fi
 
+          # 1. Determine Range
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          
           if [[ -z "$LAST_TAG" ]]; then
             echo "No previous tag found, getting all commits."
-            COMMITS=$(git log --pretty=format:"%s|%an|%H")
+            RANGE="HEAD"
           else
             echo "Getting commits since $LAST_TAG..."
-            COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"%s|%an|%H")
+            RANGE="${LAST_TAG}..HEAD"
           fi
 
+          # 2. Initialize Arrays
           FEATURES=()
           OPTIMIZATIONS=()
           BUGFIXES=()
           SECURITY=()
           AUTHORS=()
-          
-          IFS=$'\n'
-          for LINE in $COMMITS; do
-             MSG=$(echo "$LINE" | cut -d'|' -f1)
-             AUTHOR=$(echo "$LINE" | cut -d'|' -f2)
+
+          # 3. Get Hashes (Ignore Merges)
+          # We use hashes to loop safely, as commit bodies contain newlines that break simple loops.
+          HASHES=$(git log $RANGE --no-merges --format="%H")
+
+          # 4. Iterate and Parse
+          for HASH in $HASHES; do
+             # Get Subject, Body, Author separately
+             MSG=$(git log -1 --format="%s" $HASH)
+             BODY=$(git log -1 --format="%b" $HASH)
+             AUTHOR=$(git log -1 --format="%an" $HASH)
              
+             # Format Entry: "- Subject" + Optional Body
+             ENTRY="- $MSG"
+             if [[ ! -z "$BODY" ]]; then
+                # Indent body by 2 spaces for markdown list continuity
+                formatted_body=$(echo "$BODY" | sed 's/^/  /') 
+                ENTRY="$ENTRY\n$formatted_body"
+             fi
+
+             # Categorize
              if [[ "$MSG" =~ ^feature: ]]; then
-                CLEAN_MSG=$(echo "$MSG" | sed 's/^feature: //I')
-                FEATURES+=("- $CLEAN_MSG")
+                CLEAN_ENTRY=$(echo -e "$ENTRY" | sed 's/feature: //I')
+                FEATURES+=("$CLEAN_ENTRY")
                 AUTHORS+=("$AUTHOR")
              elif [[ "$MSG" =~ ^optimization: ]]; then
-                CLEAN_MSG=$(echo "$MSG" | sed 's/^optimization: //I')
-                OPTIMIZATIONS+=("- $CLEAN_MSG")
+                CLEAN_ENTRY=$(echo -e "$ENTRY" | sed 's/optimization: //I')
+                OPTIMIZATIONS+=("$CLEAN_ENTRY")
                 AUTHORS+=("$AUTHOR")
              elif [[ "$MSG" =~ ^bugfix: ]]; then
-                CLEAN_MSG=$(echo "$MSG" | sed 's/^bugfix: //I')
-                BUGFIXES+=("- $CLEAN_MSG")
+                CLEAN_ENTRY=$(echo -e "$ENTRY" | sed 's/bugfix: //I')
+                BUGFIXES+=("$CLEAN_ENTRY")
                 AUTHORS+=("$AUTHOR")
              elif [[ "$MSG" =~ ^security: ]]; then
-                CLEAN_MSG=$(echo "$MSG" | sed 's/^security: //I')
-                SECURITY+=("- $CLEAN_MSG")
+                CLEAN_ENTRY=$(echo -e "$ENTRY" | sed 's/security: //I')
+                SECURITY+=("$CLEAN_ENTRY")
                 AUTHORS+=("$AUTHOR")
              fi
           done
 
+          # 5. Build Output
+          VERSION="${{ steps.set_version.outputs.version }}"
           OUTPUT=""
+          
           if [[ "$VERSION" =~ \.[1-9]+$ ]]; then
              OUTPUT+="🔥 **Hotfix Release $VERSION**\n\n_This is a hotfix release. An update is **highly recommended**._\n\n"
           else
