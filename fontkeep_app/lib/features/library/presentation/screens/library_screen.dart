@@ -119,7 +119,7 @@ class LibraryScreen extends ConsumerWidget {
                   ),
                 );
               }
-              context.loaderOverlay.hide();
+              if (context.mounted) context.loaderOverlay.hide();
             },
           ),
           const SizedBox(width: 8),

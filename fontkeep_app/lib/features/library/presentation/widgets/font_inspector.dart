@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fontkeep_app/core/services/font_install_service.dart';
 import 'package:fontkeep_app/core/services/logger_service.dart';
 import 'package:fontkeep_app/data/local/database.dart';
 import 'package:fontkeep_app/features/library/domain/providers/library_providers.dart';
 import 'package:fontkeep_app/features/sync/domain/models/nearby_device.dart';
 import 'package:fontkeep_app/features/sync/domain/providers/sync_providers.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 
 class FontInspector extends ConsumerStatefulWidget {
   const FontInspector({super.key});
@@ -18,6 +20,8 @@ class _FontInspectorState extends ConsumerState<FontInspector> {
   Widget build(BuildContext context) {
     final logger = ref.watch(loggerProvider);
     final selectedFont = ref.watch(selectedFontProvider);
+    final installService = FontInstallService();
+    bool isInstalling = false;
 
     if (selectedFont == null) {
       return Container(
@@ -132,9 +136,11 @@ class _FontInspectorState extends ConsumerState<FontInspector> {
                           .read(fontRepositoryProvider)
                           .shareFont(selectedFont);
                     } catch (e) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(e.toString())));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(e.toString())));
+                      }
                     }
                   },
                   icon: const Icon(Icons.share),
@@ -155,14 +161,62 @@ class _FontInspectorState extends ConsumerState<FontInspector> {
                 if (!selectedFont.isSystem)
                   FilledButton.icon(
                     onPressed: () async {
+                      context.loaderOverlay.show();
                       try {
-                        await ref
-                            .read(fontRepositoryProvider)
-                            .openSystemInstaller(selectedFont);
+                        setState(() => isInstalling = true);
+
+                        bool success = await installService.install(
+                          logger,
+                          selectedFont.filePath,
+                        );
+
+                        if (mounted) {
+                          setState(() => isInstalling = false);
+
+                          if (success) {
+                            final updatedFont = selectedFont.copyWith(
+                              isSystem: true,
+                            );
+                            await ref
+                                .read(libraryControllerProvider.notifier)
+                                .updateFontStatus(logger, updatedFont);
+                            ref.read(selectedFontProvider.notifier).state =
+                                updatedFont;
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "✅ Font installed successfully!",
+                                  ),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } else {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "⚠️ Silent install failed. Opening system installer...",
+                                  ),
+                                ),
+                              );
+                            }
+                            installService.openNativeViewer(
+                              logger,
+                              selectedFont.filePath,
+                            );
+                          }
+                        }
                       } catch (e) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text(e.toString())));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text(e.toString())));
+                        }
+                      }
+                      if (context.mounted) {
+                        context.loaderOverlay.hide();
                       }
                     },
                     style: FilledButton.styleFrom(backgroundColor: Colors.teal),
