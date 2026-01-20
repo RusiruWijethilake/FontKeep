@@ -36,6 +36,12 @@ We follow a strict branching and commit strategy to automate our release pipelin
     * `infra/<name>` - CI/CD or repo maintenance.
 
 ### 2. Commit Guidelines
+
+We use an automated release pipeline. To ensure your changes appear correctly in the release notes, please follow this format:
+
+1.  **Subject Line:** Must start with a category prefix (`feature:`, `bugfix:`, etc.).
+2.  **Description (Optional):** You can add a detailed description in the commit body (leave a blank line after the subject). This will be included in the release notes automatically.
+
 Your commit messages determine the Release Notes. You **must** follow this format:
 
 `type: <description>`
@@ -48,9 +54,15 @@ Your commit messages determine the Release Notes. You **must** follow this forma
 | **security** | Security patches or vulnerability fixes | ✅ Yes |
 | **infra** | CI/CD, build scripts, or project config | ❌ No |
 
-**Example:**
-> `feature: Added dark mode support`
-> `bugfix: Fixed crash on startup`
+**Example Commit:**
+```text
+feature: Added new font preview engine
+```
+
+The new engine uses Skia for faster rendering and supports variable fonts.
+It also reduces memory usage by 40% when loading large font families.
+
+Note: Merge commits (e.g., "Merge pull request #123") are automatically ignored by our pipeline.
 
 ### 3. Making a Pull Request (PR)
 1.  Push your branch (`feature/my-cool-feature`).
@@ -73,3 +85,4 @@ Releases are automated via GitHub Actions.
 Run unit and widget tests before pushing:
 ```bash
 flutter test
+```
