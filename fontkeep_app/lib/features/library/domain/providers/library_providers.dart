@@ -91,6 +91,15 @@ class LibraryController extends StateNotifier<AsyncValue<void>> {
   Future<void> deleteFont(Font font) async {
     await ref.read(fontRepositoryProvider).deleteFont(font);
   }
+
+  Future<void> updateFontStatus(LoggerService logger, Font font) async {
+    try {
+      final repository = ref.watch(fontRepositoryProvider);
+      await repository.updateFontStatus(font);
+    } catch (e) {
+      logger.error(e);
+    }
+  }
 }
 
 Future<void> loadFontIntoFlutter(Font font, LoggerService logger) async {
