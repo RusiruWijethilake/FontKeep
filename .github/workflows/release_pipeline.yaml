@@ -33,7 +33,7 @@ jobs:
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
             echo "🔹 Detected Develop Branch. Version: $VERSION"
           else
-            # DIRECT USE: Branch name "1.2.3" becomes version "1.2.3"
+            # Branch name "1.2.3" becomes version "1.2.3"
             VERSION="${{ github.ref_name }}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
@@ -204,15 +204,15 @@ jobs:
           $exePath = "staging\fontkeep-${{ needs.versioning.outputs.version }}-windows-setup.exe"
           if (Test-Path $exePath) {
              Write-Host "🔍 Uploading to VirusTotal..."
-             try {
-                 $url = "https://www.virustotal.com/api/v3/files"
-                 $headers = @{ "x-apikey" = $env:VT_API_KEY }
-                 $response = Invoke-RestMethod -Uri $url -Method Post -Headers $headers -InFile $exePath -ContentType "multipart/form-data"
-                 $analysisId = $response.data.id
-                 Write-Host "✅ Upload Complete. Analysis ID: $analysisId"
+             # Use curl.exe (explicitly .exe to bypass PS alias)
+             $response = & curl.exe --silent --request POST --url "https://www.virustotal.com/api/v3/files" --header "x-apikey: $env:VT_API_KEY" --form "file=@$exePath"
+             Write-Host "Response: $response"
+             
+             # Simple JSON parse for the ID (since curl returns text)
+             if ($response -match '"id":\s*"([^"]+)"') {
+                 $analysisId = $matches[1]
+                 Write-Host "✅ Upload Complete."
                  Write-Host "👉 View Report: https://www.virustotal.com/gui/file-analysis/$analysisId"
-             } catch {
-                 Write-Warning "VirusTotal upload failed: $_"
              }
           } else {
              Write-Host "⚠️ Skipping VirusTotal scan: EXE not found."
