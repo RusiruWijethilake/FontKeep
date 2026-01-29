@@ -1,6 +1,5 @@
-# fontkeep_app/macos/packaging/dmg/make_config.yaml
 title: FontKeep
-icon: assets/icon/app_icon_512x512.png
+icon: app_icon_macos.icns
 contents:
   - x: 448
     y: 344

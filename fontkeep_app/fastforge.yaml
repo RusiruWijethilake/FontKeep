@@ -1,0 +1,10 @@
+name: FontKeep
+org: com.fontkeep
+
+macos:
+  appName: FontKeep
+  targets:
+    dmg:
+      icon: "app_icon_macos.icns"
+    pkg:
+      identifier: com.fontkeep.app
