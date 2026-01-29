@@ -38,6 +38,19 @@ jobs:
           fail=0
           IFS=$'\n'
           for msg in $commits; do
+            # 🟢 NEW: Ignore Merge commits
+            if [[ "$msg" =~ ^Merge.* ]]; then
+              echo "Skipping merge commit: $msg"
+              continue
+            fi
+            
+            # 🟢 OPTIONAL: specific check for Revert commits if needed
+            if [[ "$msg" =~ ^Revert.* ]]; then
+               echo "Skipping revert commit: $msg"
+               continue
+            fi
+
+            # Existing check
             if [[ ! "$msg" =~ ^(feature|optimization|bugfix|security|infra):[[:space:]].+ ]]; then
                echo "❌ Invalid Commit Message: '$msg'"
                fail=1

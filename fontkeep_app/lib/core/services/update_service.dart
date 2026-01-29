@@ -20,7 +20,7 @@ class UpdateService {
   final String _owner = "RusiruWijethilake";
   final String _repo = "FontKeep";
 
-  bool _isDownloading = false;
+  final bool _isDownloading = false;
 
   Future<void> check(BuildContext context, {bool silent = false}) async {
     if (_isDownloading) return;
@@ -295,7 +295,7 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
   double _progress = 0.0;
   String _status = "Starting download...";
   final Dio _dio = Dio();
-  CancelToken _cancelToken = CancelToken();
+  final CancelToken _cancelToken = CancelToken();
 
   @override
   void initState() {

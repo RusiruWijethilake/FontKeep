@@ -40,6 +40,8 @@ dependencies:
   version: ^3.0.2
   dio: ^5.9.0
   open_filex: ^4.7.0
+  win32: ^5.15.0
+  ffi: ^2.1.5
 
 dev_dependencies:
   flutter_test:

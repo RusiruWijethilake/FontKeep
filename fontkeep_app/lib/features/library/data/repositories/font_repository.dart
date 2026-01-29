@@ -264,6 +264,15 @@ class FontRepository {
       }
     }
   }
+
+  Future<void> updateFontStatus(Font font) async {
+    await (_db.update(_db.fonts)..where((t) => t.id.equals(font.id))).write(
+      FontsCompanion(
+        isSystem: Value(font.isSystem),
+        isBuiltIn: Value(font.isBuiltIn),
+      ),
+    );
+  }
 }
 
 class ImportableFile {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fontkeep_app/core/providers/app_info_provider.dart';
-import 'package:fontkeep_app/core/services/logger_service.dart';
 import 'package:fontkeep_app/core/services/update_service.dart';
 import 'package:fontkeep_app/features/settings/domain/providers/settings_providers.dart';
 import 'package:go_router/go_router.dart';
@@ -15,7 +14,6 @@ class SettingsScreen extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final accentColor = ref.watch(accentColorProvider);
     final controller = ref.read(settingsControllerProvider);
-    final logger = ref.watch(loggerProvider);
 
     final List<Color> colors = [
       Colors.teal,
@@ -146,12 +144,13 @@ class SettingsScreen extends ConsumerWidget {
                 );
                 await controller.exportFontsAsZip();
               } catch (e) {
-                context.loaderOverlay.hide();
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text("Export failed: $e")));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text("Export failed: $e")));
+                }
               }
-              context.loaderOverlay.hide();
+              if (context.mounted) context.loaderOverlay.hide();
             },
           ),
 

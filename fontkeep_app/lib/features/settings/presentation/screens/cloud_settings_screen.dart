@@ -91,7 +91,7 @@ class _CloudSettingsScreenState extends ConsumerState<CloudSettingsScreen> {
                 } else {
                   await ref.read(syncConfigProvider.notifier).signOut();
                 }
-                context.loaderOverlay.hide();
+                if (context.mounted) context.loaderOverlay.hide();
               },
             ),
           ),
