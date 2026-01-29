@@ -14,19 +14,34 @@ class CrashReportingService {
     StackTrace? stack, {
     String category = 'general',
   }) async {
-    if (_licenseKey.isEmpty || kDebugMode) return;
-    if (kDebugMode) return;
+    if (_licenseKey.isEmpty) {
+      debugPrint("⚠️ CrashReporter: No License Key found. Skipping.");
+      return;
+    }
 
     try {
       final payload = await _buildPayload(exception, stack, category);
 
-      await http.post(
+      debugPrint("🔍 CrashReporter: Sending log to New Relic...");
+
+      final response = await http.post(
         Uri.parse(_endpoint),
-        headers: {'Content-Type': 'application/json', 'Api-Key': _licenseKey},
+        headers: {
+          'Content-Type': 'application/json',
+          'X-License-Key': _licenseKey,
+        },
         body: jsonEncode(payload),
       );
+
+      if (response.statusCode == 200 || response.statusCode == 202) {
+        debugPrint("✅ CrashReporter: Log sent successfully!");
+      } else {
+        debugPrint(
+          "❌ CrashReporter: Failed (${response.statusCode}) - ${response.body}",
+        );
+      }
     } catch (e) {
-      stderr.writeln("Failed to send error to New Relic: $e");
+      debugPrint("❌ CrashReporter: Network Error - $e");
     }
   }
 

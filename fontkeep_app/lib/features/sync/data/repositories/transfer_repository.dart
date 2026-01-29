@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
 
@@ -22,23 +23,9 @@ class TransferRepository {
   TransferRepository(this._db, this._fontRepo, this._logger);
 
   Future<void> startServer() async {
-    if (_server != null) return;
+    await stopServer();
+
     final router = Router();
-
-    try {
-      final handler = const Pipeline()
-          .addMiddleware(loggingMiddleware(_logger))
-          .addMiddleware(errorHandlingMiddleware(_logger))
-          .addHandler(router.call);
-
-      _server = await shelf_io.serve(
-        handler,
-        io.InternetAddress.anyIPv4,
-        _port,
-      );
-    } catch (e) {
-      _logger.error(e);
-    }
 
     router.get('/ping', (Request request) => Response.ok('pong'));
 
@@ -84,17 +71,6 @@ class TransferRepository {
       );
     });
 
-    try {
-      final handler = Pipeline().addHandler(router.call);
-      _server = await shelf_io.serve(
-        handler,
-        io.InternetAddress.anyIPv4,
-        _port,
-      );
-    } catch (e) {
-      _logger.error(e);
-    }
-
     router.post('/upload', (Request request) async {
       try {
         final fileName = request.headers['X-File-Name'];
@@ -120,20 +96,32 @@ class TransferRepository {
     });
 
     try {
-      final handler = Pipeline().addHandler(router.call);
+      final handler = const Pipeline()
+          .addMiddleware(loggingMiddleware(_logger))
+          .addHandler(router.call);
+
       _server = await shelf_io.serve(
         handler,
         io.InternetAddress.anyIPv4,
         _port,
+        shared: true,
       );
+
+      _logger.info('Sync Server listening on port $_port');
     } catch (e) {
-      _logger.error(e);
+      _logger.error("Failed to start server: $e");
     }
   }
 
   Future<void> stopServer() async {
-    await _server?.close(force: true);
-    _server = null;
+    try {
+      if (_server != null) {
+        await _server!.close(force: true);
+        _server = null;
+      }
+    } catch (e) {
+      _logger.error("Error stopping server: $e");
+    }
   }
 
   Stream<double> syncWithDevice(String ip) async* {
