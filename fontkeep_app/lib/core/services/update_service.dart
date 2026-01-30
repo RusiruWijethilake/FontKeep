@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:fontkeep_app/features/settings/domain/models/github_releases.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
@@ -112,6 +113,7 @@ class UpdateService {
       context: context,
       barrierDismissible: false,
       builder: (context) {
+        final theme = Theme.of(context);
         return AlertDialog(
           title: Text('Update Available: v$version'),
           content: Column(
@@ -119,18 +121,65 @@ class UpdateService {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('A new version is available.'),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(12),
-                constraints: const BoxConstraints(maxHeight: 200),
+                height: 400,
+                width: 600,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  color: theme.colorScheme.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: theme.dividerColor.withOpacity(0.5),
+                  ),
                 ),
-                child: SingleChildScrollView(
-                  child: Text(
-                    notes,
-                    style: Theme.of(context).textTheme.bodyMedium,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Markdown(
+                    data: notes,
+                    selectable: true,
+                    onTapLink: (text, href, title) {
+                      if (href != null) {
+                        _launchBrowser(href);
+                      }
+                    },
+                    styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+                      h1: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      h2: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      h3: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      p: theme.textTheme.bodyMedium,
+                      code: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 13,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                      codeblockDecoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      blockquoteDecoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest
+                            .withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border(
+                          left: BorderSide(
+                            color: theme.colorScheme.primary,
+                            width: 4,
+                          ),
+                        ),
+                      ),
+                      blockquotePadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                    ),
                   ),
                 ),
               ),

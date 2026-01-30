@@ -43,6 +43,7 @@ dependencies:
   win32: ^5.15.0
   ffi: ^2.1.5
   encrypt: ^5.0.3
+  flutter_markdown: ^0.7.7+1
 
 dev_dependencies:
   flutter_test:
