@@ -4,6 +4,7 @@ import 'package:fontkeep_app/core/services/font_install_service.dart';
 import 'package:fontkeep_app/core/services/logger_service.dart';
 import 'package:fontkeep_app/data/local/database.dart';
 import 'package:fontkeep_app/features/library/domain/providers/library_providers.dart';
+import 'package:fontkeep_app/features/library/presentation/widgets/glyph_inspector_view.dart';
 import 'package:fontkeep_app/features/library/presentation/widgets/smart_delete_dialog.dart';
 import 'package:fontkeep_app/features/sync/domain/models/nearby_device.dart';
 import 'package:fontkeep_app/features/sync/domain/providers/sync_providers.dart';
@@ -130,6 +131,41 @@ class _FontInspectorState extends ConsumerState<FontInspector> {
                   selectedFont.isSynced ? "Synced via Drive" : "Local Only",
                 ),
                 const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => Dialog(
+                        clipBehavior: Clip.antiAlias,
+                        child: SizedBox(
+                          width: 600,
+                          height: 700,
+                          child: Column(
+                            children: [
+                              AppBar(
+                                title: Text(
+                                  'Glyphs: ${selectedFont.familyName}',
+                                ),
+                                leading: const CloseButton(),
+                                centerTitle: false,
+                              ),
+                              Expanded(
+                                child: GlyphInspectorView(font: selectedFont),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.blueGrey,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.grid_on),
+                  label: const Text("View Glyphs"),
+                ),
+                const SizedBox(height: 10),
                 FilledButton.icon(
                   onPressed: () async {
                     try {
