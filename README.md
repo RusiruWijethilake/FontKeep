@@ -14,6 +14,14 @@
 - **Sync:** Keep your font library synchronized across devices (Coming Soon).
 - **Portable:** No installation required—just download and run.
 
+## 📸 Screenshots
+
+| **Library Screen** | **Broadcast (Sync) Screen** |
+|:---:|:---:|
+| <img src="screenshots/library_screen.png" alt="FontKeep Library" width="100%"> | <img src="screenshots/sync_screen.png" alt="FontKeep Device Sync" width="100%"> |
+
+*The app supports both dark and light modes, automatically following your system settings.*
+
 ## 📥 Downloads
 
 Grab the latest version for your OS from the [Releases Page](https://github.com/RusiruWijethilake/FontKeep/releases).
@@ -22,6 +30,16 @@ Grab the latest version for your OS from the [Releases Page](https://github.com/
 | :---: | :---: | :---: |
 | [.exe Installer](https://github.com/RusiruWijethilake/FontKeep/releases/latest) | [.dmg Installer](https://github.com/RusiruWijethilake/FontKeep/releases/latest) | [.AppImage](https://github.com/RusiruWijethilake/FontKeep/releases/latest) |
 | Portable .zip | Portable .zip | .deb / .rpm |
+
+### 🍎 Note for macOS Users
+Since FontKeep is an open-source tool and not signed with a paid Apple Developer ID, you may see a warning: *"FontKeep cannot be opened because the developer cannot be verified."*
+
+**To open the app:**
+1. **Right-click** (or Control-click) the `FontKeep` app icon.
+2. Select **Open** from the menu.
+3. Click **Open** in the dialog box.
+
+_You only need to do this once. Future launches will work normally._
 
 ## 🤝 Contributing
 
