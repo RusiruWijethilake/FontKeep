@@ -18,7 +18,7 @@
 
 | **Library Screen** | **Broadcast (Sync) Screen** |
 |:---:|:---:|
-| <img src="screenshots/library_screen.png" alt="FontKeep Library" width="100%"> | <img src="screenshots/sync_screen.png" alt="FontKeep Device Sync" width="100%"> |
+| <img src="screenshots/library-screen.png" alt="FontKeep Library" width="100%"> | <img src="screenshots/sync-screen.png" alt="FontKeep Device Sync" width="100%"> |
 
 *The app supports both dark and light modes, automatically following your system settings.*
 
