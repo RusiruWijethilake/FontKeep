@@ -284,9 +284,7 @@ jobs:
           # Pass build-name and build-number explicitly to override detection
           fastforge package \
             --platform macos \
-            --targets dmg,pkg \
-            --build-arg="--build-name=${{ needs.versioning.outputs.version }}" \
-            --build-arg="--build-number=${{ github.run_number }}"
+            --targets dmg,pkg
 
       - name: Organize Artifacts
         run: |
