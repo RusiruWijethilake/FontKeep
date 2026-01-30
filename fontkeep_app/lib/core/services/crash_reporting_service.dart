@@ -16,6 +16,8 @@ class CrashReportingService {
   }) async {
     if (_licenseKey.isEmpty) {
       debugPrint("⚠️ CrashReporter: No License Key found. Skipping.");
+      debugPrint(exception.toString());
+      if (stack != null) debugPrintStack(stackTrace: stack);
       return;
     }
 

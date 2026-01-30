@@ -1,8 +1,9 @@
 import 'dart:io';
+
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 part 'database.g.dart';
 
@@ -32,8 +33,10 @@ class Collections extends Table {
 }
 
 class FontCollections extends Table {
-  TextColumn get fontId => text().references(Fonts, #id, onDelete: KeyAction.cascade)();
-  IntColumn get collectionId => integer().references(Collections, #id, onDelete: KeyAction.cascade)();
+  TextColumn get fontId =>
+      text().references(Fonts, #id, onDelete: KeyAction.cascade)();
+  IntColumn get collectionId =>
+      integer().references(Collections, #id, onDelete: KeyAction.cascade)();
 
   @override
   Set<Column> get primaryKey => {fontId, collectionId};
@@ -47,12 +50,34 @@ class SyncLogs extends Table {
   TextColumn get details => text().nullable()();
 }
 
-@DriftDatabase(tables: [Fonts, Collections, FontCollections, SyncLogs])
+class SecureSettings extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
+@DriftDatabase(
+  tables: [Fonts, Collections, FontCollections, SyncLogs, SecureSettings],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (Migrator m) async {
+      await m.createAll();
+    },
+    onUpgrade: (Migrator m, int from, int to) async {
+      if (from < 2) {
+        await m.createTable(secureSettings);
+      }
+    },
+  );
 }
 
 LazyDatabase _openConnection() {
