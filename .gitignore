@@ -139,3 +139,6 @@ app.*.map.json
 /fontkeep_app/android/app/debug
 /fontkeep_app/android/app/profile
 /fontkeep_app/android/app/release
+
+# Distributions
+/fontkeep_app/dist/
