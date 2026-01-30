@@ -46,27 +46,57 @@ jobs:
           IS_PRE="${{ steps.set_version.outputs.is_prerelease }}"
           
           if [[ "$IS_PRE" == "true" ]]; then
-            NOTES="⚠️ **Pre-release Build**\n\nThis is a development build. Changes are not listed for pre-releases."
             echo "notes<<EOF" >> $GITHUB_OUTPUT
-            echo -e "$NOTES" >> $GITHUB_OUTPUT
+            echo "notes=⚠️ **Pre-release Build**\n\nThis is a development build. Changes are not listed for pre-releases." >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
             exit 0
           fi
 
+          # Determine Range
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [[ -z "$LAST_TAG" ]]; then
-            RANGE="HEAD"
-          else
-            RANGE="${LAST_TAG}..HEAD"
-          fi
+          RANGE=$([[ -z "$LAST_TAG" ]] && echo "HEAD" || echo "${LAST_TAG}..HEAD")
 
-          # (Log parsing logic omitted for brevity - same as before)
-          # ... [Keep your existing log parsing logic here] ... 
-          # For this snippet, I'm assuming you keep the exact logic you had in your previous message.
+          # Categories
+          FEATURES=""
+          OPTIMIZATIONS=""
+          BUGFIXES=""
+          SECURITY=""
+          AUTHORS=()
+
+          # Parse Commits
+          while read -r HASH; do
+             MSG=$(git log -1 --format="%s" "$HASH")
+             BODY=$(git log -1 --format="%b" "$HASH")
+             AUTHOR=$(git log -1 --format="%an" "$HASH")
+             AUTHORS+=("$AUTHOR")
+             
+             # Format entry
+             ENTRY="- ${MSG#*: }" # Strip the prefix for the title
+             [[ -n "$BODY" ]] && ENTRY="$ENTRY\n$(echo "$BODY" | sed 's/^/  /')"
+
+             # Sort by prefix
+             case "$MSG" in
+                feature:*) FEATURES+="$ENTRY\n" ;;
+                optimization:*) OPTIMIZATIONS+="$ENTRY\n" ;;
+                bugfix:*) BUGFIXES+="$ENTRY\n" ;;
+                security:*) SECURITY+="$ENTRY\n" ;;
+             esac
+          done <<< "$(git log "$RANGE" --no-merges --format="%H")"
+
+          # Build Final Output
+          VERSION="${{ steps.set_version.outputs.version }}"
+          OUTPUT="🚀 **Release v$VERSION**\n\n"
           
-          # Placeholder for logic you already have:
-          OUTPUT="🚀 **Release ${{ steps.set_version.outputs.version }}**\n\n(See commit history for details)"
+          [[ -n "$FEATURES" ]] && OUTPUT+="### ✨ Features\n$FEATURES\n"
+          [[ -n "$OPTIMIZATIONS" ]] && OUTPUT+="### ⚡ Optimizations\n$OPTIMIZATIONS\n"
+          [[ -n "$BUGFIXES" ]] && OUTPUT+="### 🐛 Bug Fixes\n$BUGFIXES\n"
+          [[ -n "$SECURITY" ]] && OUTPUT+="### 🛡️ Security\n$SECURITY\n"
 
+          # Contributors
+          UNIQUE_AUTHORS=$(printf "%s\n" "${AUTHORS[@]}" | sort -u | tr '\n' ',' | sed 's/,$//; s/,/, /g')
+          OUTPUT+="---\n**Contributors:** $UNIQUE_AUTHORS"
+
+          # Use GITHUB_OUTPUT heredoc for multiline safety
           echo "notes<<EOF" >> $GITHUB_OUTPUT
           echo -e "$OUTPUT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -236,7 +266,9 @@ jobs:
 
       - name: Update Version
         run: |
-          sed -i '' 's/^version: .*/version: ${{ needs.versioning.outputs.version }}/g' pubspec.yaml
+          sed -i '' "s/^version:[[:space:]]*.*/version: ${{ needs.versioning.outputs.version }}/" pubspec.yaml
+          echo "Verifying pubspec.yaml version:"
+          grep "^version:" pubspec.yaml
 
       - name: Build & Zip Portable
         run: |
@@ -248,7 +280,13 @@ jobs:
           mv FontKeep.zip $GITHUB_WORKSPACE/fontkeep_app/staging/fontkeep-${{ needs.versioning.outputs.version }}-macos.zip
 
       - name: Build Packages
-        run: fastforge package --platform macos --targets dmg,pkg
+        run: |
+          # Pass build-name and build-number explicitly to override detection
+          fastforge package \
+            --platform macos \
+            --targets dmg,pkg \
+            --build-arg="--build-name=${{ needs.versioning.outputs.version }}" \
+            --build-arg="--build-number=${{ github.run_number }}"
 
       - name: Organize Artifacts
         run: |
