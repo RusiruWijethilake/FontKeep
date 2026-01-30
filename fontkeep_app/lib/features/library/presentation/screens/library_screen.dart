@@ -5,6 +5,8 @@ import 'package:fontkeep_app/core/services/bulk_action_service.dart';
 import 'package:fontkeep_app/core/services/logger_service.dart';
 import 'package:fontkeep_app/data/local/database.dart';
 import 'package:fontkeep_app/features/library/data/repositories/font_repository.dart';
+import 'package:fontkeep_app/features/library/presentation/widgets/device_picker_dialog.dart';
+import 'package:fontkeep_app/features/library/presentation/widgets/font_compare_view.dart';
 import 'package:fontkeep_app/features/library/presentation/widgets/font_inspector.dart';
 import 'package:fontkeep_app/features/library/presentation/widgets/smart_delete_dialog.dart';
 import 'package:loader_overlay/loader_overlay.dart';
@@ -459,6 +461,7 @@ class BulkActionsBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bulkService = ref.read(bulkActionServiceProvider);
     final installable = bulkService.filterInstallable(selectedFonts);
+    final canCompare = selectedFonts.length >= 2 && selectedFonts.length <= 5;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -539,7 +542,28 @@ class BulkActionsBar extends ConsumerWidget {
                 }
               },
             ),
-
+            IconButton(
+              tooltip: canCompare
+                  ? "Compare selected fonts"
+                  : "Selection of 2 to 5 fonts needed to compare",
+              icon: Icon(
+                Icons.compare,
+                color: canCompare
+                    ? Theme.of(context).colorScheme.primary
+                    : null,
+              ),
+              onPressed: canCompare
+                  ? () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              FontCompareView(fonts: selectedFonts),
+                        ),
+                      );
+                    }
+                  : null,
+            ),
             IconButton(
               tooltip: "Delete",
               icon: const Icon(Icons.delete, color: Colors.red),

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:fontkeep_app/features/library/domain/providers/library_providers.dart';
 import 'package:fontkeep_app/features/settings/data/repositories/auth_repository.dart';
 import 'package:fontkeep_app/features/settings/domain/models/sync_config.dart';
 
@@ -7,10 +8,10 @@ import '../../../../core/storage/secure_storage_provider.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final storage = ref.watch(secureStorageProvider);
-  return AuthRepository(storage);
+  final db = ref.watch(appDatabaseProvider);
+  return AuthRepository(storage, db);
 });
 
-// 2. Auth State (SyncConfig)
 final syncConfigProvider =
     StateNotifierProvider<SyncConfigNotifier, SyncConfig>((ref) {
       return SyncConfigNotifier(ref);

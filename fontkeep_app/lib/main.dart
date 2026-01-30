@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fontkeep_app/core/security/local_encryption.dart';
 import 'package:fontkeep_app/core/services/crash_reporting_service.dart';
 import 'package:fontkeep_app/features/settings/domain/providers/settings_providers.dart';
 import 'package:loader_overlay/loader_overlay.dart';
@@ -22,6 +23,7 @@ void main() {
           category: 'ui_render',
         );
       };
+      await LocalEncryption.init();
       runApp(const ProviderScope(child: FontKeepApp()));
     },
     (error, stack) {
