@@ -129,7 +129,7 @@ Set-ItemProperty -Path \$regPath -Name \$regValue -Value \$fPath
       }
 
       final pathPtr = destPath.toNativeUtf16();
-      final added = AddFontResource(pathPtr);
+      final added = AddFontResource(PCWSTR(pathPtr));
 
       if (added > 0) {
         PostMessage(HWND_BROADCAST, WM_FONTCHANGE, 0, 0);
